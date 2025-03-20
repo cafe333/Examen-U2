@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2 class="mb-4">Agregar Nuevo Artículo</h2>
+<form method="POST">
+    <div class="mb-3">
+        <label for="title" class="form-label">Título</label>
+        <input type="text" class="form-control" name="title" required>
+    </div>
+    <div class="mb-3">
+        <label for="introduction" class="form-label">Introducción</label>
+        <textarea class="form-control" name="introduction" rows="3" required></textarea>
+    </div>
+    <div class="mb-3">
+        <label for="year" class="form-label">Año</label>
+        <input type="number" class="form-control" name="year" required>
+    </div>
+    <div class="mb-3">
+        <label for="authors" class="form-label">Autores</label>
+        <input type="text" class="form-control" name="authors" required>
+    </div>
+    <button type="submit" class="btn btn-success">Guardar</button>
+    <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancelar</a>
+</form>
+{% endblock %}
