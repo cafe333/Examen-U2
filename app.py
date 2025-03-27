@@ -1,30 +1,28 @@
 from flask import Flask, render_template, request, redirect, url_for
-from flask_sqlalchemy import SQLAlchemy
+import mysql.connector
 
 app = Flask(__name__)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:@localhost/blog_ciberseguridad'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+# Función para conectar a la base de datos
+def get_db_connection():
+    return mysql.connector.connect(
+        host="localhost",
+        user="root",
+        password="",
+        database="blog_ciberseguridad"  # Cambié el nombre de la base de datos para coincidir con el original
+    )
 
-db = SQLAlchemy(app)
-
-
-class Article(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    title = db.Column(db.String(200), nullable=False)
-    introduction = db.Column(db.Text, nullable=False)
-    year = db.Column(db.Integer, nullable=False)
-    authors = db.Column(db.String(200), nullable=False)
-
-with app.app_context():
-    db.create_all()
-
-
+# Ruta principal: mostrar todos los artículos
 @app.route('/')
 def index():
-    articles = Article.query.all()
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)  # Utilizar dictionary=True para obtener resultados como diccionarios
+    cursor.execute("SELECT * FROM article")  # Asegúrate de que la tabla en tu DB sea 'article'
+    articles = cursor.fetchall()  # Obtener todos los artículos
+    conn.close()
     return render_template('index.html', articles=articles)
 
+# Ruta para agregar un nuevo artículo
 @app.route('/add', methods=['GET', 'POST'])
 def add_article():
     if request.method == 'POST':
@@ -33,36 +31,52 @@ def add_article():
         year = request.form['year']
         authors = request.form['authors']
 
-        new_article = Article(title=title, introduction=introduction, year=year, authors=authors)
-        db.session.add(new_article)
-        db.session.commit()
-
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO article (title, introduction, year, authors) VALUES (%s, %s, %s, %s)", 
+            (title, introduction, year, authors)
+        )
+        conn.commit()
+        conn.close()
+        
         return redirect(url_for('index'))
     
     return render_template('add_article.html')
 
+# Ruta para editar un artículo
 @app.route('/edit/<int:id>', methods=['GET', 'POST'])
 def edit_article(id):
-    article = Article.query.get_or_404(id)
-
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM article WHERE id = %s", (id,))
+    article = cursor.fetchone()
+    
     if request.method == 'POST':
-        article.title = request.form['title']
-        article.introduction = request.form['introduction']
-        article.year = request.form['year']
-        article.authors = request.form['authors']
+        title = request.form['title']
+        introduction = request.form['introduction']
+        year = request.form['year']
+        authors = request.form['authors']
 
-        db.session.commit()
+        cursor.execute(
+            "UPDATE article SET title = %s, introduction = %s, year = %s, authors = %s WHERE id = %s", 
+            (title, introduction, year, authors, id)
+        )
+        conn.commit()
+        conn.close()
         return redirect(url_for('index'))
     
+    conn.close()
     return render_template('edit_article.html', article=article)
 
+# Ruta para eliminar un artículo
 @app.route('/delete/<int:id>')
 def delete_article(id):
-    article = Article.query.get_or_404(id)
-    db.session.delete(article)
-    db.session.commit()
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM article WHERE id = %s", (id,))
+    conn.commit()
+    conn.close()
     return redirect(url_for('index'))
 
-if __name__ == '__main__':
-    app.run(debug=True)
 
